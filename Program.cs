@@ -10,6 +10,8 @@ namespace InternalChatAppServer
     class Program
     {
         static List<TcpClient> clients = new List<TcpClient>();
+        static Dictionary<string, List<TcpClient>> groups =
+            new Dictionary<string, List<TcpClient>>();
         static TcpListener listener;
         static bool running = true;
 
@@ -23,6 +25,7 @@ namespace InternalChatAppServer
 
             Console.WriteLine("Server started on port 5000.");
             Console.WriteLine("Waiting for clients...");
+            Console.WriteLine("Commands: addgroup <GroupName>, listgroups, exit");
 
             Thread acceptThread = new Thread(AcceptClients);
             acceptThread.Start();
@@ -30,11 +33,52 @@ namespace InternalChatAppServer
             while (running)
             {
                 string command = Console.ReadLine();
-                if (command?.ToLower() == "exit")
+                if (string.IsNullOrWhiteSpace(command))
+                    continue;
+
+                string cmd;
+                string arg = null;
+
+                int spaceIndex = command.IndexOf(' ');
+                if (spaceIndex == -1)
+                {
+                    cmd = command.ToLower();
+                }
+                else
+                {
+                    cmd = command.Substring(0, spaceIndex).ToLower();
+                    arg = command.Substring(spaceIndex + 1).Trim();
+                }
+
+                if (cmd == "exit")
                 {
                     running = false;
                     listener.Stop();
                     Environment.Exit(0);
+                }
+                else if (cmd == "addgroup" && !string.IsNullOrEmpty(arg))
+                {
+                    string groupName = arg;
+                    if (!groups.ContainsKey(groupName))
+                    {
+                        groups[groupName] = new List<TcpClient>();
+                        Console.WriteLine($"Group '{groupName}' created.");
+                        // No broadcast here
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Group '{groupName}' already exists.");
+                    }
+                }
+                else if (cmd == "listgroups")
+                {
+                    Console.WriteLine("Groups:");
+                    foreach (var g in groups.Keys)
+                        Console.WriteLine(" - " + g);
+                }
+                else
+                {
+                    Console.WriteLine("Unknown command.");
                 }
             }
         }
